@@ -1,4 +1,5 @@
-name: 内核构建 - Android 12 (5.10)
+```yaml
+name: Compilación del Kernel - Android 12 (5.10)
 
 permissions:
   contents: write
@@ -7,9 +8,9 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      # ==================== 下拉选项 ====================
+      # ==================== Opciones desplegables ====================
       kernelsu_variant:
-        description: "KernelSU 变体"
+        description: "Variante de KernelSU"
         required: true
         type: choice
         options:
@@ -20,26 +21,29 @@ on:
           - SukiSU(40548)
           - BakaSU
         default: BakaSU
+
       ksu_mode:
-        description: "KernelSU / SUSFS 模式"
+        description: "Modo KernelSU / SUSFS"
         required: true
         type: choice
         options:
-          - 关闭
-          - 禁用SUSFS
-          - 禁用KSU
-        default: 关闭
+          - "Desactivado"
+          - "Desactivar SUSFS"
+          - "Desactivar KSU"
+        default: "Desactivado"
+
       use_kpm:
-        description: "KPM 功能（patched 尚不支持）"
+        description: "Función KPM (patched aún no es compatible)"
         required: true
         type: choice
-        default: "disabled (关闭)"
+        default: "disabled (Desactivado)"
         options:
-          - "disabled (关闭)"
-          - "enabled (开启)"
-          - "patched (开启并修补，尚不支持)"
+          - "disabled (Desactivado)"
+          - "enabled (Activado)"
+          - "patched (Activado y parcheado, aún no compatible)"
+
       droidspaces:
-        description: "Droidspaces 容器支持"
+        description: "Compatibilidad con contenedores Droidspaces"
         required: false
         type: choice
         options:
@@ -48,122 +52,146 @@ on:
           - "123"
           - "345"
         default: "off"
+
       artifact_upload_mode:
-        description: "构建产物上传模式"
+        description: "Modo de subida de archivos compilados"
         required: true
         type: choice
         options:
-          - "仅上传 AnyKernel3.zip"
-          - "上传全部"
-        default: "仅上传 AnyKernel3.zip"
+          - "Subir únicamente AnyKernel3.zip"
+          - "Subir todos los archivos"
+        default: "Subir únicamente AnyKernel3.zip"
 
-      # ==================== 文本输入 ====================
+      # ==================== Entradas de texto ====================
       version:
-        description: "自定义版本名 (可选)"
+        description: "Nombre personalizado de la versión (opcional)"
         required: false
         type: string
+
       build_time:
-        description: "自定义构建时间 (可选，N或留空=当前UTC)"
+        description: "Fecha y hora personalizada de compilación (opcional, N o vacío = UTC actual)"
         required: false
         type: string
         default: "Sun Dec 01 08:10:00 UTC 2024"
 
-      # ==================== 开关（默认关闭） ====================
+      # ==================== Interruptores (desactivados por defecto) ====================
       use_zram:
-        description: "启用 ZRAM 增强算法"
+        description: "Activar algoritmos mejorados de ZRAM"
         required: true
         type: boolean
         default: false
+
       use_bbg:
-        description: "启用 BBG 防格机"
+        description: "Activar protección BBG contra bloqueos del dispositivo"
         required: true
         type: boolean
         default: false
+
       use_rekernel:
-        description: "启用 Re-Kernel 驱动"
+        description: "Activar el controlador Re-Kernel"
         required: false
         type: boolean
         default: false
+
       use_nomount:
-        description: "启用 NoMount 挂载元模块"
+        description: "Activar el módulo de montaje NoMount"
         required: false
         type: boolean
         default: false
+
       use_networking:
-        description: "启用网络增强（BBRv3 / IPSet / Qdisc / CIFS）"
+        description: "Activar mejoras de red (BBRv3 / IPSet / Qdisc / CIFS)"
         required: false
         type: boolean
         default: false
+
       cve_2026_43499_patch:
-        description: "应用 CVE-2026-43499 rtmutex 修复链"
+        description: "Aplicar la cadena de correcciones rtmutex para CVE-2026-43499"
         required: false
         type: boolean
         default: false
+
       droidspaces_ntsync:
-        description: "启用 Droidspaces 容器 NTSync 支持（需启用 Droidspaces）"
+        description: "Activar compatibilidad NTSync para contenedores Droidspaces (requiere Droidspaces activado)"
         required: false
         type: boolean
         default: false
+
   workflow_call:
     inputs:
       kernelsu_variant:
         required: true
         type: string
+
       version:
         required: false
         type: string
+
       build_time:
         required: false
         type: string
         default: "Sun Dec 01 08:10:00 UTC 2024"
+
       use_zram:
         required: true
         type: boolean
+
       use_bbg:
         required: true
         type: boolean
+
       use_kpm:
         required: true
         type: string
+
       use_rekernel:
         required: false
         type: boolean
         default: false
+
       use_nomount:
         required: false
         type: boolean
         default: false
+
       use_networking:
         required: false
         type: boolean
         default: false
+
       cve_2026_43499_patch:
         required: false
         type: boolean
         default: false
+
       ksu_mode:
         required: false
         type: string
-        default: 关闭
+        default: "Desactivado"
+
       droidspaces:
         required: false
         type: string
         default: "off"
+
       artifact_upload_mode:
         required: false
         type: string
-        default: "上传全部"
+        default: "Subir todos los archivos"
+
       droidspaces_ntsync:
         required: false
         type: boolean
         default: false
+
       called_from_main:
-        description: "是否从 main.yml 调用（内部使用）"
+        description: "Indica si se ejecuta desde main.yml (uso interno)"
         required: false
         type: boolean
         default: false
+
       export_susfs_patches:
-        description: "导出 SUSFS 集成补丁（由 main.yml 传入）"
+        description: "Exportar parches de integración SUSFS (proporcionado por main.yml)"
         required: false
         type: boolean
         default: false
@@ -241,6 +269,7 @@ jobs:
           - sub_level: "X"
             os_patch_level: "lts"
             revision: "r1"
+
     uses: ./.github/workflows/build.yml
     secrets: inherit
     with:
@@ -261,16 +290,17 @@ jobs:
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
       supp_op: false
-      enable_susfs: ${{ inputs.ksu_mode != '禁用SUSFS' && inputs.ksu_mode != '禁用KSU' }}
-      ksu_mode: ${{ inputs.ksu_mode || '关闭' }}
+      enable_susfs: ${{ inputs.ksu_mode != 'Desactivar SUSFS' && inputs.ksu_mode != 'Desactivar KSU' }}
+      ksu_mode: ${{ inputs.ksu_mode || 'Desactivado' }}
       droidspaces: ${{ inputs.droidspaces || 'off' }}
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync || false }}
       artifact_upload_mode: ${{ inputs.artifact_upload_mode }}
 
-  # 仅在直接触发时运行，从 main.yml 调用时跳过
+  # Solo se ejecuta cuando se inicia directamente; se omite si se llama desde main.yml
   get-ksu-manager:
     if: ${{ !inputs.called_from_main }}
     uses: ./.github/workflows/get-manager.yml
     secrets: inherit
     with:
       kernelsu_variant: ${{ inputs.kernelsu_variant }}
+```
