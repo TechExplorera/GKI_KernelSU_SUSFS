@@ -1,88 +1,72 @@
-name: build-susfs-gki
+name: Compilar GKI + KernelSU + SUSFS (todas las versiones, LTS)
+
+# Compila la versión LTS de cada rama GKI con KernelSU y SUSFS reutilizando
+# build.yml, que ya integra KernelSU, copia los fuentes de SUSFS, aplica
+# scripts/susfs_fixes y usa el Clang de AOSP.
+
+permissions:
+  contents: write
+  actions: write
 
 on:
   workflow_dispatch:
+    inputs:
+      kernelsu_variant:
+        description: "Variante de KernelSU"
+        required: true
+        type: choice
+        options:
+          - Official
+          - SukiSU
+          - SukiSU(40726)
+          - SukiSU(40548)
+          - BakaSU
+        default: BakaSU
+
+      artifact_upload_mode:
+        description: "Modo de subida de archivos compilados"
+        required: true
+        type: choice
+        options:
+          - "Subir únicamente AnyKernel3.zip"
+          - "Subir todos los archivos"
+        default: "Subir únicamente AnyKernel3.zip"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 240
+    name: "${{ matrix.android_version }}-${{ matrix.kernel_version }}"
     strategy:
       fail-fast: false
       matrix:
         include:
-          - branch: gki-android12-5.10
-            aosp: android12-5.10
-          - branch: gki-android12-5.10-dev
-            aosp: android12-5.10
-          - branch: gki-android13-5.10
-            aosp: android13-5.10
-          - branch: gki-android13-5.15
-            aosp: android13-5.15
-          - branch: gki-android13-5.15-dev
-            aosp: android13-5.15
-          - branch: gki-android14-5.15
-            aosp: android14-5.15
-          - branch: gki-android14-6.1
-            aosp: android14-6.1
-          - branch: gki-android14-6.1-dev
-            aosp: android14-6.1
-          - branch: gki-android15-6.6
-            aosp: android15-6.6
-          - branch: gki-android15-6.6-dev
-            aosp: android15-6.6
-          - branch: gki-android16-6.12
-            aosp: android16-6.12
-          - branch: gki-android16-6.12-dev
-            aosp: android16-6.12
+          - android_version: android12
+            kernel_version: "5.10"
+          - android_version: android13
+            kernel_version: "5.15"
+          - android_version: android14
+            kernel_version: "6.1"
+          - android_version: android15
+            kernel_version: "6.6"
+          - android_version: android16
+            kernel_version: "6.12"
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      android_version: ${{ matrix.android_version }}
+      kernel_version: ${{ matrix.kernel_version }}
+      sub_level: "X"
+      os_patch_level: "lts"
+      revision: "r1"
+      ksu_variant: ${{ inputs.kernelsu_variant }}
+      enable_susfs: true
+      ksu_mode: "关闭"
+      use_zram: false
+      use_bbg: false
+      use_kpm: "disabled (关闭)"
+      artifact_upload_mode: ${{ inputs.artifact_upload_mode == 'Subir todos los archivos' && '上传全部' || '仅上传 AnyKernel3.zip' }}
 
-    steps:
-      - name: Clonar susfs4ksu
-        run: |
-          git clone --depth 1 --branch "${{ matrix.branch }}" \
-            https://gitlab.com/simonpunk/susfs4ksu.git susfs
-
-      - name: Clonar kernel común de AOSP
-        run: |
-          git clone --depth 1 --branch "${{ matrix.aosp }}" \
-            https://android.googlesource.com/kernel/common kernel
-
-      - name: Instalar toolchain LLVM
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang lld llvm bc bison flex libssl-dev libelf-dev
-
-      - name: Aplicar parche de SUSFS
-        working-directory: kernel
-        run: |
-          set -euo pipefail
-
-          PATCH="$(find ../susfs/kernel_patches -maxdepth 1 -type f -name "*${{ matrix.branch }}*.patch" | head -n 1)"
-          if [ -z "$PATCH" ]; then
-            PATCH="$(find ../susfs/kernel_patches -maxdepth 1 -type f -name "*.patch" | head -n 1)"
-          fi
-
-          if [ -z "$PATCH" ] || [ ! -f "$PATCH" ]; then
-            echo "No se encontró ningún parche para ${{ matrix.branch }} ni un parche genérico."
-            exit 1
-          fi
-
-          echo "Usando parche: $PATCH"
-          git apply --check "$PATCH"
-          git apply "$PATCH"
-
-      - name: Compilar kernel GKI
-        working-directory: kernel
-        run: |
-          set -euo pipefail
-          make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
-          make ARCH=arm64 LLVM=1 LLVM_IAS=1 -j"$(nproc)" Image
-
-      - name: Subir artefactos
-        uses: actions/upload-artifact@v4
-        with:
-          name: kernel-${{ matrix.branch }}
-          path: |
-            kernel/arch/arm64/boot/Image
-            kernel/.config
-          if-no-files-found: error
+  get-ksu-manager:
+    uses: ./.github/workflows/get-manager.yml
+    secrets: inherit
+    with:
+      kernelsu_variant: ${{ inputs.kernelsu_variant }}

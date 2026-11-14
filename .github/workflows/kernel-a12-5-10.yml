@@ -1,4 +1,3 @@
-```yaml
 name: Compilación del Kernel - Android 12 (5.10)
 
 permissions:
@@ -290,11 +289,12 @@ jobs:
       cve_2026_43499_patch: ${{ inputs.cve_2026_43499_patch }}
       export_susfs_patches: ${{ inputs.export_susfs_patches || false }}
       supp_op: false
-      enable_susfs: ${{ inputs.ksu_mode != 'Desactivar SUSFS' && inputs.ksu_mode != 'Desactivar KSU' }}
-      ksu_mode: ${{ inputs.ksu_mode || 'Desactivado' }}
+      # build.yml compara contra los valores originales en chino: traducir aquí las opciones en español
+      enable_susfs: ${{ !contains(fromJSON('["Desactivar SUSFS","Desactivar KSU","禁用SUSFS","禁用KSU"]'), inputs.ksu_mode) }}
+      ksu_mode: ${{ (inputs.ksu_mode == 'Desactivar KSU' || inputs.ksu_mode == '禁用KSU') && '禁用KSU' || ((inputs.ksu_mode == 'Desactivar SUSFS' || inputs.ksu_mode == '禁用SUSFS') && '禁用SUSFS' || '关闭') }}
       droidspaces: ${{ inputs.droidspaces || 'off' }}
       droidspaces_ntsync: ${{ inputs.droidspaces_ntsync || false }}
-      artifact_upload_mode: ${{ inputs.artifact_upload_mode }}
+      artifact_upload_mode: ${{ (inputs.artifact_upload_mode == 'Subir todos los archivos' || inputs.artifact_upload_mode == '上传全部') && '上传全部' || '仅上传 AnyKernel3.zip' }}
 
   # Solo se ejecuta cuando se inicia directamente; se omite si se llama desde main.yml
   get-ksu-manager:
@@ -303,4 +303,3 @@ jobs:
     secrets: inherit
     with:
       kernelsu_variant: ${{ inputs.kernelsu_variant }}
-```
