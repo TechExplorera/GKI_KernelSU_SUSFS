@@ -56,11 +56,17 @@ jobs:
         working-directory: kernel
         run: |
           set -euo pipefail
-          # Buscar el parche que corresponde a la rama; si no hay uno con ese nombre, usar el único que exista.
-          PATCH=$(ls ../susfs/kernel_patches/*"${{ matrix.branch }}"*.patch 2>/dev/null | head -n1 || true)
+
+          PATCH="$(find ../susfs/kernel_patches -maxdepth 1 -type f -name "*${{ matrix.branch }}*.patch" | head -n 1)"
           if [ -z "$PATCH" ]; then
-            PATCH=$(ls ../susfs/kernel_patches/*.patch | head -n1)
+            PATCH="$(find ../susfs/kernel_patches -maxdepth 1 -type f -name "*.patch" | head -n 1)"
           fi
+
+          if [ -z "$PATCH" ] || [ ! -f "$PATCH" ]; then
+            echo "No se encontró ningún parche para ${{ matrix.branch }} ni un parche genérico."
+            exit 1
+          fi
+
           echo "Usando parche: $PATCH"
           git apply --check "$PATCH"
           git apply "$PATCH"
