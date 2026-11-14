@@ -60,3 +60,14 @@ jobs:
           path: |
             susfs/**
           if-no-files-found: warn
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: susfs-${{ matrix.branch }}
+          path: |
+            kernel/out/
+            susfs/
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
