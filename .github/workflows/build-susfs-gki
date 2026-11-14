@@ -1,0 +1,82 @@
+name: build-susfs-gki
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: gki-android12-5.10
+            aosp: android12-5.10
+          - branch: gki-android12-5.10-dev
+            aosp: android12-5.10
+          - branch: gki-android13-5.10
+            aosp: android13-5.10
+          - branch: gki-android13-5.15
+            aosp: android13-5.15
+          - branch: gki-android13-5.15-dev
+            aosp: android13-5.15
+          - branch: gki-android14-5.15
+            aosp: android14-5.15
+          - branch: gki-android14-6.1
+            aosp: android14-6.1
+          - branch: gki-android14-6.1-dev
+            aosp: android14-6.1
+          - branch: gki-android15-6.6
+            aosp: android15-6.6
+          - branch: gki-android15-6.6-dev
+            aosp: android15-6.6
+          - branch: gki-android16-6.12
+            aosp: android16-6.12
+          - branch: gki-android16-6.12-dev
+            aosp: android16-6.12
+
+    steps:
+      - name: Clonar susfs4ksu
+        run: |
+          git clone --depth 1 --branch "${{ matrix.branch }}" \
+            https://gitlab.com/simonpunk/susfs4ksu.git susfs
+
+      - name: Clonar kernel común de AOSP
+        run: |
+          git clone --depth 1 --branch "${{ matrix.aosp }}" \
+            https://android.googlesource.com/kernel/common kernel
+
+      - name: Instalar toolchain LLVM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld llvm bc bison flex libssl-dev libelf-dev
+
+      - name: Aplicar parche de SUSFS
+        working-directory: kernel
+        run: |
+          set -euo pipefail
+          # Buscar el parche que corresponde a la rama; si no hay uno con ese nombre, usar el único que exista.
+          PATCH=$(ls ../susfs/kernel_patches/*"${{ matrix.branch }}"*.patch 2>/dev/null | head -n1 || true)
+          if [ -z "$PATCH" ]; then
+            PATCH=$(ls ../susfs/kernel_patches/*.patch | head -n1)
+          fi
+          echo "Usando parche: $PATCH"
+          git apply --check "$PATCH"
+          git apply "$PATCH"
+
+      - name: Compilar kernel GKI
+        working-directory: kernel
+        run: |
+          set -euo pipefail
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 gki_defconfig
+          make ARCH=arm64 LLVM=1 LLVM_IAS=1 -j"$(nproc)" Image
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-${{ matrix.branch }}
+          path: |
+            kernel/arch/arm64/boot/Image
+            kernel/.config
+          if-no-files-found: error
