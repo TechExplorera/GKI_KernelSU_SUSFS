@@ -1,0 +1,62 @@
+name: build-susfs-gki
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - branch: gki-android12-5.10
+            aosp: android12-5.10
+          - branch: gki-android12-5.10-dev
+            aosp: android12-5.10
+          - branch: gki-android13-5.10
+            aosp: android13-5.10
+          - branch: gki-android13-5.15
+            aosp: android13-5.15
+          - branch: gki-android13-5.15-dev
+            aosp: android13-5.15
+          - branch: gki-android14-5.15
+            aosp: android14-5.15
+          - branch: gki-android14-6.1
+            aosp: android14-6.1
+          - branch: gki-android14-6.1-dev
+            aosp: android14-6.1
+          - branch: gki-android15-6.6
+            aosp: android15-6.6
+          - branch: gki-android15-6.6-dev
+            aosp: android15-6.6
+          - branch: gki-android16-6.12
+            aosp: android16-6.12
+          - branch: gki-android16-6.12-dev
+            aosp: android16-6.12
+
+    steps:
+      - name: Clonar susfs4ksu (${{ matrix.branch }})
+        run: |
+          git clone --depth 1 --branch "${{ matrix.branch }}" \
+            https://gitlab.com/simonpunk/susfs4ksu.git susfs
+
+      - name: Clonar kernel común de AOSP (${{ matrix.aosp }})
+        run: |
+          git clone --depth 1 --branch "${{ matrix.aosp }}" \
+            https://android.googlesource.com/kernel/common kernel
+
+      # TODO: aplicar los parches de susfs sobre kernel/.
+      # Revisar en el repo susfs qué archivos de parche usar y en qué orden.
+
+      # TODO: compilar el kernel GKI (Bazel).
+      # Ejemplo de referencia: tools/bazel build //common:kernel_aarch64_dist
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.branch }}
+          path: |
+            susfs/**
+          if-no-files-found: warn
